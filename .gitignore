@@ -1,0 +1,14 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Data (Keep the structure, but skip the heavy images)
+data/raw/
+data/train/images/
+data/train/labels/
+data/val/images/
+data/val/labels/
+
+# Models
+models/*/weights/*.pt

@@ -1,0 +1,7 @@
+path: /home/jpcco/projects/manf465/data
+train: train/images
+val: val/images
+
+# Classes
+names:
+  0: fuse
