@@ -51,5 +51,5 @@ def process_dataset(raw_dir, output_dir, split_ratio=0.8):
             shutil.copy(src_path, img_dest_path)
 
 # Usage
-clear_dataset('data')
-# process_dataset('data/raw', 'data')
+# clear_dataset('data')
+process_dataset('data/raw', 'data')

@@ -3,5 +3,9 @@
 __pycache__/
 *.pyc
 
+# Data
+data/train
+data/val
+
 # Models
 models/*/weights/*.pt
