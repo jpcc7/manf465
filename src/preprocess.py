@@ -1,55 +1,37 @@
-import cv2
 import os
-import shutil
 import random
+import shutil
 
-# Clears all contents in train and val images and labels folders
-def clear_dataset(base_data_path):
-    subsets = ['train', 'val']
-    folders = ['images', 'labels']
-    
-    print(f"Cleaning directory: {base_data_path}...")
-    
-    for subset in subsets:
-        for folder in folders:
-            target_path = os.path.join(base_data_path, subset, folder)
+def split_dataset(export_path, output_path, train_ratio=0.8):
+    # 1. Define subdirectories
+    for split in ['train', 'val']:
+        for folder in ['images', 'labels']:
+            os.makedirs(os.path.join(output_path, split, folder), exist_ok=True)
+
+    # 2. Get all image filenames (ignoring extensions for matching)
+    image_dir = os.path.join(export_path, 'images')
+    images = [f for f in os.listdir(image_dir) if f.endswith('.jpg')]
+    random.shuffle(images)
+
+    # 3. Calculate split point
+    split_idx = int(len(images) * train_ratio)
+    train_images = images[:split_idx]
+    val_images = images[split_idx:]
+
+    def move_files(file_list, subset):
+        for img_name in file_list:
+            label_name = img_name.rsplit('.', 1)[0] + '.txt'
             
-            if os.path.exists(target_path):
-                # Remove the entire directory and its contents
-                shutil.rmtree(target_path)
-                print(f"  - Cleared {subset}/{folder}")
-            
-            # Recreate the empty directory
-            os.makedirs(target_path, exist_ok=True)
+            # Move Image
+            shutil.copy(os.path.join(export_path, 'images', img_name),
+                        os.path.join(output_path, subset, 'images', img_name))
+            # Move Label
+            shutil.copy(os.path.join(export_path, 'labels', label_name),
+                        os.path.join(output_path, subset, 'labels', label_name))
 
-    print("Previous data cleared.")
+    move_files(train_images, 'train')
+    move_files(val_images, 'val')
+    print(f"Done! Train: {len(train_images)} | Val: {len(val_images)}")
 
-# Splits and shuffles raw data into train and val sets with corresponding images and labels folders
-def process_dataset(raw_dir, output_dir, split_ratio=0.8):
-    classes = ['zero_fuse', 'one_fuse', 'two_fuse']
-    
-    for cls in classes:
-        folder_path = os.path.join(raw_dir, cls)
-        images = os.listdir(folder_path)
-        random.shuffle(images)
-        
-        for i, img_name in enumerate(images):
-            # Determine if this goes to Train or Val
-            subset = 'train' if i < len(images) * split_ratio else 'val'
-            
-            # Paths
-            src_path = os.path.join(folder_path, img_name)
-            img = cv2.imread(src_path)
-            h, w, _ = img.shape
-            
-            # Define label destination
-            label_name = os.path.splitext(img_name)[0] + ".txt"
-            label_path = os.path.join(output_dir, subset, 'labels', label_name)
-            img_dest_path = os.path.join(output_dir, subset, 'images', img_name)
-
-            # Copy image to YOLO structure
-            shutil.copy(src_path, img_dest_path)
-
-# Usage
-# clear_dataset('data')
-process_dataset('data/raw', 'data')
+if __name__ == "__main__":
+    split_dataset('data/label_export', 'data')

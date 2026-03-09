@@ -21,3 +21,11 @@ def process_frame(frame):
         print(f"Status: Alert! Found {fuse_count} fuses.")
 
     return results[0].plot() # Returns image with boxes drawn
+
+
+# Run inference on a specific test image
+results = model.predict(source="data/label_export/images/0dc031ac-one_fuse_013.jpg", save=True)
+
+# Print how many fuses it found
+for result in results:
+    print(f"Detected {len(result.boxes)} fuses in this image.")

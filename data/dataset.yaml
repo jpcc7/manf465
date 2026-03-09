@@ -1,7 +1,8 @@
-path: /home/jpcco/projects/manf465/data
+# data/dataset.yaml
+path: /home/jpcco/projects/manf465/data  # Absolute path to your data folder
 train: train/images
 val: val/images
 
-# Classes
+# Classes (Atomic Approach: only 1 class)
 names:
   0: fuse
