@@ -1,31 +1,58 @@
 from ultralytics import YOLO
+import cv2
+import os
+from config import FINAL_MODEL_PATH, DATA_DIR
 
-# Load fine-tuned model
-model = YOLO("models/conveyor_v1/weights/best.pt")
+# 1. Load fine-tuned model using Path object from config
+if not FINAL_MODEL_PATH.exists():
+    raise FileNotFoundError(f"Model not found at {FINAL_MODEL_PATH}. Run main.py first!")
 
-def process_frame(frame):
+# YOLO handles Pathlib objects natively, but casting to str is safest for all versions
+model = YOLO(str(FINAL_MODEL_PATH))
+
+def process_frame(frame, conf=0.5):
+    """
+    Processes a single frame (numpy array) and returns the count + annotated image.
+    Used for both static test images and live camera streams.
+    """
     # Run inference
-    results = model(frame)
+    results = model(frame, conf=conf)
+    result = results[0]
+    fuse_count = len(result.boxes)
     
-    # The 'results' object contains a list of detections
-    # Each detection is an instance of a 'fuse'
-    fuse_count = len(results[0].boxes)
-    
+    # Logic for MANF 465 Conveyor System
     if fuse_count == 0:
-        print("Status: 0 Fuses (Empty/Reject)")
+        status = "0 Fuses (Empty/Reject)"
     elif fuse_count == 1:
-        print("Status: 1 Fuse (Incomplete)")
+        status = "1 Fuse (Incomplete)"
     elif fuse_count == 2:
-        print("Status: 2 Fuses (Complete)")
+        status = "2 Fuses (Complete)"
     else:
-        print(f"Status: Alert! Found {fuse_count} fuses.")
+        status = f"Alert! Found {fuse_count} fuses."
 
-    return results[0].plot() # Returns image with boxes drawn
+    print(f"[{status}] - Detections: {fuse_count}")
+    
+    # Returns the image with bounding boxes drawn
+    return result.plot(), fuse_count
 
-
-# Run inference on a specific test image
-results = model.predict(source="data/label_export/images/0dc031ac-one_fuse_013.jpg", save=True)
-
-# Print how many fuses it found
-for result in results:
-    print(f"Detected {len(result.boxes)} fuses in this image.")
+# --- TEST EXECUTION ---
+if __name__ == "__main__":
+    # Point to an image in your label_export directory using the config's DATA_DIR
+    test_image_path = DATA_DIR / "raw" / "two_fuse" / "two_fuse_000.jpg"
+    
+    if test_image_path.exists():
+        # Load image using OpenCV
+        img = cv2.imread(str(test_image_path))
+        
+        # Process frame
+        annotated_img, count = process_frame(img, conf=0.6)
+        
+        # Save output to the project root for verification
+        output_path = test_image_path.parent.parent.parent.parent / "test_result.jpg"
+        cv2.imwrite(str(output_path), annotated_img)
+        
+        print(f"--- SUCCESS ---")
+        print(f"Processed: {test_image_path.name}")
+        print(f"Visual result saved to: {output_path}")
+    else:
+        print(f"Error: Test image not found at {test_image_path}")

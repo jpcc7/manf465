@@ -1,64 +1,78 @@
 from ultralytics import YOLO
 import os
 import shutil
+from config import * # Imports BASE_DIR, DATA_DIR, FINAL_MODEL_PATH, etc.
 
 # Checks if all images have a corresponding label
 def check_sync(image_dir, label_dir):
-    if not os.path.exists(image_dir) or not os.path.exists(label_dir):
-        print("Error: Directory paths do not exist.")
+    # Pathlib objects (from config) support .exists() natively
+    if not image_dir.exists() or not label_dir.exists():
+        print(f"Error: Directory paths do not exist: {image_dir} or {label_dir}")
         return False
         
-    images = {os.path.splitext(f)[0] for f in os.listdir(image_dir) if f.lower().endswith(('.jpg', '.png'))}
-    labels = {os.path.splitext(f)[0] for f in os.listdir(label_dir) if f.lower().endswith('.txt')}
+    # Using Pathlib's glob or iterdir is cleaner than os.listdir
+    images = {f.stem for f in image_dir.iterdir() if f.suffix.lower() in ('.jpg', '.png')}
+    labels = {f.stem for f in label_dir.glob("*.txt")}
     
     missing_labels = images - labels
     if missing_labels:
-        print(f"Warning: {len(missing_labels)} images are missing labels!")
+        print(f"Warning: {len(missing_labels)} images in {image_dir.name} are missing labels!")
         return False
     
-    print("All images are correctly associated with a label file.")
+    print(f"Sync Check Passed for {image_dir.parent.name}/{image_dir.name}.")
     return True
 
-def start_training(clean=False):
-    project_path = "models/fuse_counting_v1"
-    trained_dir = "models/trained"
+def start_training(clean=True):
+    # 1. Cleaning logic using paths from config.py
+    if clean:
+    # Pre-Training Cleanup
+        print("Performing pre-training cleanup...")
+        if MODELS_DIR.exists():
+            for item in MODELS_DIR.iterdir():
+                # Delete everything EXCEPT the 'trained' folder
+                if item.is_dir() and item.name != "trained":
+                    shutil.rmtree(item)
+                elif item.is_file():
+                    os.remove(item)
     
-    # 1. Cleaning logic
-    if clean and os.path.exists(project_path):
-        print(f"Cleaning out old session at {project_path}...")
-        shutil.rmtree(project_path)
-        
-        for root, dirs, files in os.walk("data"):
-            for file in files:
-                if file.endswith(".cache"):
-                    os.remove(os.path.join(root, file))
+    # Also wipe YOLO caches
+        for cache_file in DATA_DIR.rglob("*.cache"):
+            os.remove(cache_file)
 
     # 2. Training logic
     model = YOLO("yolo11n.pt")
-    results = model.train(
-        data="data/dataset.yaml",
-        epochs=5,
-        imgsz=640,
-        device="cpu", # Changed to CPU as per your snippet
-        project="models",
-        name="fuse_counting_v1",
+
+    model.train(
+        data=str(DATA_YAML),      # YOLO expects strings, so we cast Pathlib objects
+        epochs=EPOCHS,            # Using value from config.py
+        imgsz=IMGSZ,              # Using value from config.py
+        device=DEVICE,            # Using value from config.py
+        project=str(MODELS_DIR),
+        name=TRAINING_PROJECT_DIR.name,
         exist_ok=True 
     )
 
-    # 3. Post-training: Export weights to models/trained
-    os.makedirs(trained_dir, exist_ok=True)
-    source_weights = os.path.join(project_path, "weights", "best.pt")
-    target_weights = os.path.join(trained_dir, "fuse_v1.pt")
+    # 3. Post-training: Export weights to models/trained/fuse_v1.pt
+    TRAINED_EXPORT_DIR.mkdir(parents=True, exist_ok=True)
+    
+    # YOLO saves weights inside the project/name/weights/ folder
+    source_best = TRAINING_PROJECT_DIR / "weights" / "best.pt"
+    source_last = TRAINING_PROJECT_DIR / "weights" / "last.pt"
 
-    if os.path.exists(source_weights):
-        shutil.copy(source_weights, target_weights)
+    if source_best.exists():
+        shutil.copy(source_best, FINAL_MODEL_PATH)
         print(f"--- SUCCESS ---")
-        print(f"Model saved to: {target_weights}")
+        print(f"Best model saved to: {FINAL_MODEL_PATH}")
+    elif source_last.exists():
+        shutil.copy(source_last, FINAL_MODEL_PATH)
+        print(f"--- SUCCESS (Using Last) ---")
+        print(f"Last model saved to: {FINAL_MODEL_PATH}")
     else:
-        print("Error: Training completed but best.pt was not found.")
+        print(f"Error: No weights found in {TRAINING_PROJECT_DIR}/weights/")
 
 if __name__ == "__main__":
-    if check_sync("data/train/images", "data/train/labels"):
-        start_training(clean=True) # Set to True to ensure a fresh weights copy
+    # Check both Train and Val sets using the clean paths from config.py
+    if check_sync(TRAIN_IMG_DIR, TRAIN_LBL_DIR) and check_sync(VAL_IMG_DIR, VAL_LBL_DIR):
+        start_training(clean=True)
     else:
-        print("Training aborted due to missing labels.")
+        print("Training aborted due to synchronization issues.")
