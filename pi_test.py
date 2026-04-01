@@ -30,7 +30,7 @@ try:
         frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
         # Run YOLO Inference (imgsz=320 for speed)
-        results = model(frame_bgr, imgsz=320, conf=0.5, verbose=False)
+        results = model(frame_bgr, imgsz=320, conf=0.20, verbose=False)
 
         for result in results:
             for box in result.boxes:
