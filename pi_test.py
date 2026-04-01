@@ -1,44 +1,43 @@
 import cv2
 import numpy as np
 from picamera2 import Picamera2
+# Correct the import for the preview module
 from picamera2.previews import NullPreview
 from ultralytics import YOLO
 
-# 1. Load your YOLO model
+# 1. Load the model
 model = YOLO("fuse_v1.pt")
 
-# 2. Initialize Picamera2 - The official 2026 Pi Camera API
+# 2. Initialize Picamera2
 picam2 = Picamera2()
-# Configure for a stable 640x480 stream
+
+# 3. Configure the stream
 config = picam2.create_video_configuration(main={"format": "RGB888", "size": (640, 480)})
 picam2.configure(config)
-picam2.start_preview(Picamera2.NullPreview())
+
+# 4. FIX: Use NullPreview to bypass the 'pykms' dependency error
+picam2.start_preview(NullPreview())
 picam2.start()
 
-print("Starting Real-Time Inference (Picamera2)... Press 'q' to quit.")
+print("Starting Inference... Look at your VNC window for the output.")
 
 try:
     while True:
-        # 3. Capture a frame directly as a numpy array
-        # This bypasses the V4L2 'reshape' bug entirely
+        # Capture frame as array
         frame = picam2.capture_array()
 
-        # 4. Convert RGB (Picamera2 default) to BGR (OpenCV default)
+        # Convert RGB to BGR for OpenCV
         frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
-        # 5. Run YOLO Inference
-        # imgsz=320 keeps the FPS high on your Pi 4
+        # Run YOLO Inference (imgsz=320 for speed)
         results = model(frame_bgr, imgsz=320, conf=0.5, verbose=False)
 
-        # 6. Visualize
+        # Annotate and show
         annotated_frame = results[0].plot()
-        
-        # 7. Show in VNC window
-        cv2.imshow("YOLO11 Fuse Detection", annotated_frame)
+        cv2.imshow("Fuse Detection", annotated_frame)
 
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
 finally:
-    # Proper hardware cleanup
     picam2.stop()
     cv2.destroyAllWindows()
