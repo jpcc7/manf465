@@ -32,6 +32,13 @@ try:
         # Run YOLO Inference (imgsz=320 for speed)
         results = model(frame_bgr, imgsz=320, conf=0.5, verbose=False)
 
+        for result in results:
+            for box in result.boxes:
+                class_id = int(box.cls[0])
+                conf_score = float(box.conf[0])
+                name = model.names[class_id]
+                print(f"Detected: {name} | Confidence: {conf_score:.2f}")
+
         # Annotate and show
         annotated_frame = results[0].plot()
         cv2.imshow("Fuse Detection", annotated_frame)
