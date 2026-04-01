@@ -38,7 +38,7 @@ def process_frame(frame, conf=0.5):
 # --- TEST EXECUTION ---
 if __name__ == "__main__":
     # Point to an image in your label_export directory using the config's DATA_DIR
-    test_image_path = DATA_DIR / "raw" / "two_fuse" / "two_fuse_000.jpg"
+    test_image_path = DATA_DIR / "val" / "images" / "64f9fedb-two_fuse_024.jpg"
     
     if test_image_path.exists():
         # Load image using OpenCV
