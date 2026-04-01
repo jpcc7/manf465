@@ -11,6 +11,7 @@ picam2 = Picamera2()
 # Configure for a stable 640x480 stream
 config = picam2.create_video_configuration(main={"format": "RGB888", "size": (640, 480)})
 picam2.configure(config)
+picam2.start_preview(Picamera2.NullPreview())
 picam2.start()
 
 print("Starting Real-Time Inference (Picamera2)... Press 'q' to quit.")
