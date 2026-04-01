@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 from picamera2 import Picamera2
+from picamera2.previews import NullPreview
 from ultralytics import YOLO
 
 # 1. Load your YOLO model
